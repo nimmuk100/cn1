@@ -1,60 +1,56 @@
-#include <stdio.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<unistd.h>
+#include<sys/socket.h>
+#include<arpa/inet.h>
+#include<string.h>
+
+#define BUFFER_SIZE 2000
 
 int main() {
-    int sock;
+    int socket_desc;
     struct sockaddr_in server;
-    char message[2000], server_reply[2000];
+    char buffer[BUFFER_SIZE] = {0};
 
     // Create socket
-    sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1) {
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_desc == -1) {
         printf("Could not create socket\n");
         return 1;
     }
-    printf("Socket created\n");
 
-    server.sin_addr.s_addr = inet_addr("127.0.0.1");  // Server IP address
+    // Server address
     server.sin_family = AF_INET;
-    server.sin_port = htons(8888);  // Server port number
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");  // Localhost
+    server.sin_port = htons(8888);
 
-    // Connect to server
-    if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
-        perror("Connection failed. Error");
-        return 1;
+    // Connect to the server
+    if (connect(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0) {
+        printf("Connection Failed\n");
+        return -1;
     }
-    printf("Connected to server\n");
+    printf("Connected to the server...\n");
 
-    // Communicate with the server
+    // Continuous interaction with the server
     while (1) {
         printf("Enter message: ");
-        fgets(message, 2000, stdin);
+        fgets(buffer, BUFFER_SIZE, stdin);
 
-        // Send some data to the server
-        if (send(sock, message, strlen(message), 0) < 0) {
-            printf("Send failed\n");
-            return 1;
-        }
+        // Send message to the server
+        send(socket_desc, buffer, strlen(buffer), 0);
 
-        // Receive a reply from the server
-        if (recv(sock, server_reply, 2000, 0) < 0) {
-            printf("Receive failed\n");
-            break;
-        }
-        printf("Server reply: %s\n", server_reply);
-
-        // Exit if message is "exit"
-        if (strncmp(message, "exit", 4) == 0) {
-            printf("Exiting...\n");
-            break;
+        // Receive and display server's response
+        int valread = recv(socket_desc, buffer, BUFFER_SIZE, 0);
+        if (valread > 0) {
+            buffer[valread] = '\0';
+            printf("Server: %s\n", buffer);
+        } else {
+            printf("Connection closed by server\n");
+            break;  // Exit the loop if server disconnects
         }
     }
 
-    // Close the socket
-    close(sock);
-
+    // Close the socket when done
+    close(socket_desc);
     return 0;
 }
